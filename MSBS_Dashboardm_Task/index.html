@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>MSBS</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="images/favicon.png">
+    <link rel="apple-touch-icon" href="images/icons/favicon.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="images/icons/favicon-72x72.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="images/icons/favicon-114x114.png">
+    <!--Loading bootstrap css-->
+    <link type="text/css" rel="stylesheet" href="http://fonts.googleapis.com/css?family=Open+Sans:400italic,400,300,700">
+    <link type="text/css" rel="stylesheet" href="http://fonts.googleapis.com/css?family=Oswald:400,700,300">
+    <link type="text/css" rel="stylesheet" href="styles/font-awesome.min.css">
+    <link type="text/css" rel="stylesheet" href="styles/bootstrap.min.css">
+    <link type="text/css" rel="stylesheet" href="styles/animate.css">
+    <link type="text/css" rel="stylesheet" href="styles/main.css">
+    <link type="text/css" rel="stylesheet" href="styles/style-responsive.css">
+    
+    <!-- Dependency for google visualization graph start-->
+    <script src="script/jquery.min.js"></script>
+    <script type="text/javascript" src="script/loader.js"></script> 
+    <!-- Dependency for google visualization graph end -->
+    <script type="text/javascript">
+    var ajaxData;
+    $(document).ready(function(){
+        /*Tabs management*/
+        $(".nav-tabs a").click(function(){
+            $(this).tab('show');
+        });
+        $('.nav-tabs a').on('shown.bs.tab', function(event){
+            var x = $(event.target).text();         // active tab
+            var y = $(event.relatedTarget).text();  // previous tab
+            $(".act span").text(x);
+            $(".prev span").text(y);
+        });
+
+        /*Getting graph data from API using ajax*/
+        $.ajax({
+            url:"http://api.jsonbin.io/b/5b893b00db948c68635a04eb",
+            method:"GET",
+            type:"json",
+            success: function(result){
+                google.charts.load('current', {'packages':['corechart']});
+                google.charts.setOnLoadCallback(drawChart);
+                ajaxData = result;
+            },
+            error: function (err) {
+                console.log("AJAX error in request: " + JSON.stringify(err, null, 2));
+            }
+        }).always(function(jqXHR, textStatus) {
+            if (textStatus != "success") {
+                alert("Error: " + jqXHR.statusText);
+            }
+        });
+
+        /*Getting table data from API using ajax*/
+        var displayData = $('.display-data');
+        $.ajax({
+            url:"http://api.jsonbin.io/b/5b893aa03ffac56f4bd7905a",
+            method:"GET",
+            type:"json",
+            success: function(result){
+                /*console.log(result.data);*/
+                var out = "<table class='data-table'><div style='padding:10px 10px;'><span>Show</span><select style='display:inline-block;'><option selected='selected'>25</option><option>50</option><option>100</option></select><div style='display:inline-block;float:right!important'><span>Search:&nbsp;</span><input type='text' placeholder='search' style='border-radius:2px;border:1px solid #fff;padding:3px;'></div></div><thead><tr><th width='60%'>Keyword <span class='fa fa-sort'></span></th><th width='20%'>Position <span class='fa fa-sort'></span><th width='20%'>Change <span class='fa fa-sort'></span></th><tr></thead><tbody>";
+                for(var i in result.data)
+                {
+                    out += "<tr><td>"+result.data[i].keyword+"</td><td class='text-center'>"+result.data[i].position+"&nbsp;&nbsp;<span class='text-primary fa fa-sort'></span></td><td class='text-center'>"+result.data[i].change+"&nbsp;&nbsp;<span class='text-danger fa fa-sort'></span></td></tr>";
+                }
+                out+="</tbody></table>";
+
+                displayData.html(out);
+                $("table").addClass("table");
+            },
+            error: function (err) {
+                console.log("AJAX error in request: " + JSON.stringify(err, null, 2));
+            }
+        }).always(function(jqXHR, textStatus) {
+            if (textStatus != "success") {
+                alert("Error: " + jqXHR.statusText);
+            }
+        });
+    });
+
+    function drawChart() {
+      var data = [];
+      var a = Object.keys(ajaxData);
+      a.unshift('ArrayIndex');
+      data.push(a);
+
+      // adding dataTable lables in first column
+      for(var j=1;j<=ajaxData[a[1]].points.length;j++){
+        data.push([]);
+        // data[j].push('Index ' + j);
+        data[j].push(getDateStr(j));
+      }
+
+      // adding data to dataTable transposing the ajaxData
+      for(var i=0;i<a.length-1;i++){
+        for(var j=0;j<ajaxData[a[i+1]].points.length;j++){
+          data[j+1].push(ajaxData[a[i+1]].points[j]);
+        }                    
+      }
+
+      // data to google DataTable
+      data = google.visualization.arrayToDataTable(data);
+
+      var options = {
+        title: '',
+        height:350,
+        curveType: 'function',
+        legend: { position: 'bottom' },
+        vAxis:{ticks:[1,2,3,4,5,6,7,8,9],
+            gridlines: {
+                color: 'transparent'
+            },
+            textStyle:{color: '#666'}
+        },
+        hAxis:{
+            textStyle:{color: '#666'}
+        },
+        pointSize:7,
+        series: {
+          0: { color: '#006400' },
+          1: { color: '#ff8000' },
+          2: { color: '#8470ff' },
+          3: { color: '#00FF00' },
+          4: { color: '#800080' }
+        },
+        backgroundColor:{
+            fill:'#333',
+            opacity:0.1
+        }
+      };
+      options.chartArea = { left: '5%', top: '10%', width: "90%", height: "70%" };
+
+      var chart = new google.visualization.LineChart(document.getElementById('curve_chart'));
+
+      chart.draw(data, options);
+    }
+
+    function getDateStr(days) {
+      var d = new Date();
+      d.setDate(d.getDate() - 7 + days)
+      return d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate();
+    }
+  </script>
+</head>
+<body>
+    <div>
+        <!--Top header start-->
+        <div id="header-topbar-option-demo" class="page-header-topbar">
+            <nav id="topbar" role="navigation" style="margin-bottom: 0;" data-step="3" class="navbar navbar-default navbar-static-top">
+                <div class="navbar-header">
+                    <button type="button" data-toggle="collapse" data-target=".sidebar-collapse" class="navbar-toggle"><span class="sr-only">Toggle navigation</span><span class="icon-bar"></span><span class="icon-bar"></span><span class="icon-bar"></span></button>
+                    <a id="logo" href="index.html" class="navbar-brand"><span class="fa fa-rocket"></span><span class="logo-text">G</span><span style="display: none" class="logo-text-icon">µ</span></a>
+                </div>
+                <div class="topbar-main"><a id="menu-toggle" href="#" class="hidden-xs"><i class="fa fa-bars"></i></a>
+                    <ul class="nav navbar navbar-top-links navbar-right mbn text-right">
+                        <li class="dropdown topbar-user"><a data-hover="dropdown" href="#" class="dropdown-toggle"><img src="images/avatar/profile.jpg" alt="" class="img-responsive img-circle"/>&nbsp;<span class="hidden-xs">Prasad Palampalli</span>&nbsp;<span class="caret"></span></a>
+                            <ul class="dropdown-menu dropdown-user pull-right text-left">
+                                <li><a href="#"><i class="fa fa-user"></i>My Profile</a></li>
+                                <li><a href="#"><i class="fa fa-calendar"></i>My Calendar</a></li>
+                                <li><a href="#"><i class="fa fa-envelope"></i>My Inbox<span class="badge badge-danger">3</span></a></li>
+                                <li><a href="#"><i class="fa fa-tasks"></i>My Tasks<span class="badge badge-success">7</span></a></li>
+                                <li class="divider"></li>
+                                <li><a href="#"><i class="fa fa-lock"></i>Lock Screen</a></li>
+                                <li><a href="Login.html"><i class="fa fa-key"></i>Log Out</a></li>
+                            </ul>
+                        </li>
+                        <li class="dropdown"><a data-hover="dropdown" href="#" class="dropdown-toggle"><i class="fa fa-bell fa-fw"></i><span class="badge badge-green">3</span></a>
+                            
+                        </li>
+                        <li id="topbar-chat" class=""><a href="javascript:void(0)" data-step="4" data-position="left" class="btn-chat"><i class="fa fa-share-alt"></i></a></li>
+                    </ul>
+                </div>
+            </nav>
+        </div>
+        <!--Top header end-->
+        <div id="wrapper">
+            <!--sidebar menu start-->
+            <nav id="sidebar" role="navigation" data-step="2"
+                data-position="right" class="navbar-default navbar-static-side">
+                <div class="sidebar-collapse menu-scroll">
+                    <ul id="side-menu" class="nav">
+                        
+                         <div class="clearfix"></div>
+                        <li class="active">
+                            <a href="dashboard.html"><i class="fa fa-laptop fa-fw"><div class="icon-bg bg-orange"></div></i>
+                                <span class="menu-title">Analytics</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="dashboard.html"><i class="fa fa-signal fa-fw"><div class="icon-bg bg-orange"></div></i>
+                                <span class="menu-title">Stock Market</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="dashboard.html"><i class="fa fa-code-fork fa-fw"><div class="icon-bg bg-orange"></div></i>
+                                <span class="menu-title">Sharing</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="dashboard.html"><i class="fa fa-search-plus fa-fw"><div class="icon-bg bg-orange"></div></i>
+                                <span class="menu-title">Search Records</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="dashboard.html"><i class="fa fa-file-text-o fa-fw"><div class="icon-bg bg-orange"></div></i>
+                                <span class="menu-title">Analytic Report</span>
+                            </a>
+                        </li>
+                        
+                        <li><a href="Charts.html"><i class="fa fa-user fa-fw">
+                            <div class="icon-bg bg-orange"></div>
+                            </i><span class="menu-title">Customers</span></a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+            <!--sidebar menu end-->
+            <!--page wrapper start-->
+            <div id="page-wrapper">
+                <!--Page content start-->
+                <ul class="nav nav-tabs">
+                    <li class="active"><a href="#keyword-ranks">Keyword Ranks</a></li>
+                    <li><a href="#competitors">Competitors</a></li>
+                </ul>
+                <div class="tab-content">
+                    <div id="keyword-ranks" class="tab-pane fade in active">
+                        <div class="page-content">
+                            <div id="tab-general">
+                                <div class="row">
+                                    <div class="col-md-12" style="padding-left: 14px;">
+                                        <div id="curve_chart" class="hidden-xs"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="tab-general">
+                                <div class="row">
+                                    <div class="col-md-12" style="padding-left: 14px;">
+                                        <h6 class="ranks_header">Ranks</h6>
+                                        <div class="display-data"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="competitors" class="tab-pane fade in">
+                        <!-- competitors tab content here -->
+                    </div>
+                </div>
+                <!--Page content end-->
+            </div>
+            <!--page wrapper end-->
+        </div>
+    </div>
+    
+    <script src="script/jquery-migrate-1.2.1.min.js"></script>
+    <script src="script/bootstrap.min.js"></script>
+    <script src="script/bootstrap-hover-dropdown.js"></script>
+    <script src="script/jquery.metisMenu.js"></script>
+    <script src="script/jquery.menu.js"></script>
+</body>
+</html>
